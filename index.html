@@ -6,108 +6,85 @@
     <title>Shazam Killer</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background-color: #1e1e2e; /* Темный фон */
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        .header {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .subtitle {
-            color: #a0a0a0;
-            margin-bottom: 40px;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        /* Кнопка поиска (большая и красивая) */
-        .search-btn {
-            background: linear-gradient(135deg, #2481cc, #1b65a1); /* Градиент как в Telegram */
-            color: white;
-            border: none;
-            padding: 20px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            border-radius: 50px; /* Круглая */
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); /* Тень */
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .search-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 8px rgba(36, 129, 204, 0.6);
-        }
-
-        /* Блок с языками (внизу) */
-        .lang-container {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .lang-btn {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        body { background-color: #1e1e2e; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .search-btn { background: linear-gradient(135deg, #2481cc, #1b65a1); color: white; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); transition: 0.2s; }
+        .search-btn:active { transform: scale(0.95); }
+        .search-btn.recording { background: linear-gradient(135deg, #cc2424, #a11b1b); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #status { margin-top: 20px; color: #a0a0a0; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <div class="header">🎵 Shazam Killer</div>
-    <div class="subtitle">Твой личный поиск музыки (сделан Георгием)</div>
-
-    <!-- ГЛАВНАЯ КНОПКА ПОИСКА -->
-    <button class="search-btn" id="searchBtn">
-        🎙 Искать музыку
-    </button>
-
-    <!-- Выбор языка (для красоты) -->
-    <div class="lang-container">
-        <button class="lang-btn" onclick="tg.showAlert('Язык: Русский')">🇷🇺 Русский</button>
-        <button class="lang-btn" onclick="tg.showAlert('Язык: English')">🇬🇧 English</button>
-    </div>
+    <h1>🎵 Shazam Killer</h1>
+    <button class="search-btn" id="searchBtn">🎙 Искать музыку</button>
+    <div id="status">Нажми, чтобы записать 5 секунд</div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
 
-        // Обработчик главной кнопки
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            // Вибрация
-            tg.HapticFeedback.impactOccurred('medium');
-            
-            // Показываем сообщение (в будущем тут будет отправка голосового)
-            tg.showAlert('Слушаю музыку... (тут будет запись с микрофона и отправка боту)');
-            
-            // В реальности тут нужно:
-            // 1. Включить микрофон (navigator.mediaDevices.getUserMedia)
-            // 2. Записать звук
-            // 3. Отправить его в твоего бота (через tg.sendData)
+        const btn = document.getElementById('searchBtn');
+        const status = document.getElementById('status');
+
+        btn.addEventListener('click', async () => {
+            if (isRecording) return;
+
+            try {
+                // Просим доступ к микрофону
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    // Когда запись остановлена, отправляем файл
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    
+                    // Меняем интерфейс обратно
+                    btn.classList.remove('recording');
+                    btn.innerHTML = '🎙 Искать музыку';
+                    status.innerText = 'Отправляем боту...';
+                    isRecording = false;
+
+                    // Отправляем файл в Telegram
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'record.webm');
+                    
+                    // Отправляем данные боту (через WebApp API)
+                    tg.sendData(JSON.stringify({ action: "recognize", data: "audio_sent" }));
+                    
+                    // Примечание: Telegram WebApp пока не умеет напрямую отправлять файлы боту. 
+                    // В идеале тут нужно использовать fetch к твоему серверу.
+                    // Но для начала мы можем просто показать, что запись прошла.
+                    tg.showAlert("Запись сделана! (Нужно настроить сервер для отправки)");
+                };
+
+                // Начинаем запись
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add('recording');
+                btn.innerHTML = '🔴 Идет запись (5 сек)...';
+                status.innerText = 'Слушаю музыку...';
+
+                // Останавливаем через 5 секунд
+                setTimeout(() => {
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    }
+                }, 5000);
+
+            } catch (err) {
+                tg.showAlert("Ошибка доступа к микрофону: " + err.message);
+            }
         });
     </script>
-
 </body>
 </html>
