@@ -12,12 +12,18 @@
         .search-btn.recording { background: linear-gradient(135deg, #cc2424, #a11b1b); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         #status { margin-top: 20px; color: #a0a0a0; font-size: 14px; }
+        #share-container { margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
     <h1>🎵 Shazam Killer</h1>
     <button class="search-btn" id="searchBtn">🎙 Искать музыку</button>
     <div id="status">Нажми, чтобы записать 5 секунд</div>
+
+    <!-- Скрытый контейнер для ссылки на файл -->
+    <div id="share-container">
+        <a id="downloadLink" style="color: #2481cc; text-decoration: underline;" download="audio.webm">Скачать запись</a>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -29,12 +35,13 @@
 
         const btn = document.getElementById('searchBtn');
         const status = document.getElementById('status');
+        const shareContainer = document.getElementById('share-container');
+        const downloadLink = document.getElementById('downloadLink');
 
         btn.addEventListener('click', async () => {
             if (isRecording) return;
 
             try {
-                // Просим доступ к микрофону
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 
@@ -42,38 +49,38 @@
                     audioChunks.push(event.data);
                 };
 
-                mediaRecorder.onstop = async () => {
-                    // Когда запись остановлена, отправляем файл
+                mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     audioChunks = [];
                     
-                    // Меняем интерфейс обратно
                     btn.classList.remove('recording');
                     btn.innerHTML = '🎙 Искать музыку';
-                    status.innerText = 'Отправляем боту...';
+                    status.innerText = 'Запись сделана!';
                     isRecording = false;
 
-                    // Отправляем файл в Telegram
-                    const formData = new FormData();
-                    formData.append('audio', audioBlob, 'record.webm');
-                    
-                    // Отправляем данные боту (через WebApp API)
-                    tg.sendData(JSON.stringify({ action: "recognize", data: "audio_sent" }));
-                    
-                    // Примечание: Telegram WebApp пока не умеет напрямую отправлять файлы боту. 
-                    // В идеале тут нужно использовать fetch к твоему серверу.
-                    // Но для начала мы можем просто показать, что запись прошла.
-                    tg.showAlert("Запись сделана! (Нужно настроить сервер для отправки)");
+                    // Создаем ссылку на скачивание файла
+                    const url = URL.createObjectURL(audioBlob);
+                    downloadLink.href = url;
+                    shareContainer.style.display = 'block';
+
+                    // Пытаемся использовать Web Share API (если поддерживается)
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Аудио для распознавания',
+                            text: 'Отправь это голосовое боту!',
+                            files: [new File([audioBlob], 'music.webm', { type: 'audio/webm' })]
+                        }).catch(console.error);
+                    } else {
+                        tg.showAlert("Файл готов. Нажми 'Скачать запись', а затем отправь его боту.");
+                    }
                 };
 
-                // Начинаем запись
                 mediaRecorder.start();
                 isRecording = true;
                 btn.classList.add('recording');
                 btn.innerHTML = '🔴 Идет запись (5 сек)...';
                 status.innerText = 'Слушаю музыку...';
 
-                // Останавливаем через 5 секунд
                 setTimeout(() => {
                     if (mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
