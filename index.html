@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SgsohaMusicBot</title>
+    <title>Shazam Killer</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { background-color: #1e1e2e; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
@@ -12,11 +12,6 @@
         .search-btn.recording { background: linear-gradient(135deg, #cc2424, #a11b1b); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         #status { margin-top: 20px; color: #a0a0a0; font-size: 14px; }
-        
-        /* Стили для кнопки скачивания */
-        #download-container { display: none; margin-top: 20px; width: 100%; max-width: 300px; }
-        .download-btn { display: block; background-color: #2ea043; color: white; padding: 15px; text-decoration: none; border-radius: 10px; font-weight: bold; text-align: center; margin-bottom: 10px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
-        .download-btn:active { background-color: #238636; }
     </style>
 </head>
 <body>
@@ -26,24 +21,20 @@
     <button class="search-btn" id="searchBtn">🎙 Искать музыку</button>
     <div id="status">Готов к записи...</div>
 
-    <!-- Контейнер для кнопки скачивания (появится после записи) -->
-    <div id="download-container">
-        <button id="downloadBtn" class="download-btn">📥 Скачать аудио</button>
-    </div>
-
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        
+
+        // ВСТАВЬ СЮДА СВОЙ ТОКЕН ОТ BOTFATHER
+        const BOT_TOKEN = 'ТВОЙ_ТОКЕН_ЗДЕСЬ'; 
+        const CHAT_ID = tg.initDataUnsafe?.user?.id; // ID пользователя (тебя)
+
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
-        let currentAudioUrl = null; // Здесь будем хранить ссылку на Blob
 
         const btn = document.getElementById('searchBtn');
         const status = document.getElementById('status');
-        const downloadContainer = document.getElementById('download-container');
-        const downloadBtn = document.getElementById('downloadBtn');
 
         btn.addEventListener('click', async () => {
             if (isRecording) return;
@@ -58,35 +49,40 @@
                     }
                 };
 
-                mediaRecorder.onstop = () => {
-                    // Создаем Blob (файл в памяти)
+                mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     audioChunks = [];
                     
                     btn.classList.remove('recording');
                     btn.innerHTML = '🎙 Искать музыку';
-                    status.innerText = 'Запись сделана!';
+                    status.innerText = 'Отправляем боту...';
                     isRecording = false;
 
-                    // ВОТ ТУТ МЫ СОЗДАЕМ ССЫЛКУ НА BLOB
-                    if (currentAudioUrl) {
-                        URL.revokeObjectURL(currentAudioUrl); // Удаляем старую ссылку
-                    }
-                    currentAudioUrl = URL.createObjectURL(audioBlob);
-                    
-                    // Показываем кнопку скачивания
-                    downloadContainer.style.display = 'block';
-                    
-                    // Пытаемся использовать нативный метод Telegram (если есть)
-                    if (tg.downloadFile) {
-                        try {
-                            tg.downloadFile({ url: currentAudioUrl, file_name: 'music.webm' });
-                            tg.showAlert("Файл скачивается через Telegram!");
-                        } catch (e) {
-                            console.error("Ошибка downloadFile:", e);
+                    // Отправляем файл через Telegram Bot API
+                    try {
+                        const formData = new FormData();
+                        formData.append('chat_id', CHAT_ID);
+                        formData.append('voice', audioBlob, 'music.webm');
+                        formData.append('caption', 'Распознай этот трек!');
+
+                        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const result = await response.json();
+                        
+                        if (result.ok) {
+                            status.innerText = 'Файл отправлен боту!';
+                            tg.showAlert("Голосовое отправлено! Бот сейчас ответит.");
+                        } else {
+                            status.innerText = 'Ошибка отправки.';
+                            tg.showAlert("Ошибка: " + result.description);
                         }
-                    } else {
-                        tg.showAlert("Нажми на кнопку 'Скачать аудио' ниже. Если не работает — открой ссылку в браузере.");
+                    } catch (error) {
+                        console.error(error);
+                        status.innerText = 'Ошибка сети.';
+                        tg.showAlert("Ошибка сети: " + error.message);
                     }
                 };
 
@@ -106,28 +102,6 @@
             } catch (err) {
                 tg.showAlert("Ошибка микрофона: " + err.message);
             }
-        });
-
-        // Обработчик кнопки "Скачать аудио"
-        downloadBtn.addEventListener('click', () => {
-            if (!currentAudioUrl) return;
-
-            // Создаем временную ссылку <a> и кликаем по ней
-            const a = document.createElement('a');
-            a.href = currentAudioUrl;
-            a.download = 'music.webm';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            // Если браузер не поддерживает, пробуем открыть в новой вкладке
-            setTimeout(() => {
-                if (tg.downloadFile) {
-                     // уже попытались
-                } else {
-                     window.open(currentAudioUrl, '_blank');
-                }
-            }, 500);
         });
     </script>
 </body>
