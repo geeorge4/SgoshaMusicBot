@@ -6,23 +6,77 @@
     <title>Shazam Killer</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #1e1e2e; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .search-btn { background: linear-gradient(135deg, #2481cc, #1b65a1); color: white; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); transition: 0.2s; }
+        body { 
+            background-color: #1e1e2e; 
+            color: white; 
+            font-family: 'Segoe UI', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px;
+            text-align: center;
+        }
+        .search-btn { 
+            background: linear-gradient(135deg, #2481cc, #1b65a1); 
+            color: white; 
+            border: none; 
+            padding: 20px 40px; 
+            font-size: 20px; 
+            font-weight: bold; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); 
+            transition: 0.2s; 
+            margin-top: 20px;
+        }
         .search-btn:active { transform: scale(0.95); }
-        .search-btn.recording { background: linear-gradient(135deg, #cc2424, #a11b1b); animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        #status { margin-top: 20px; color: #a0a0a0; font-size: 14px; }
-        #share-container { margin-top: 20px; display: none; }
+        .search-btn.recording { 
+            background: linear-gradient(135deg, #cc2424, #a11b1b); 
+            animation: pulse 1s infinite; 
+        }
+        @keyframes pulse { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.05); } 
+            100% { transform: scale(1); } 
+        }
+        #status { 
+            margin-top: 20px; 
+            color: #a0a0a0; 
+            font-size: 14px; 
+        }
+        #download-container {
+            display: none;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .download-btn {
+            display: block;
+            background-color: #2ea043;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .download-btn:active { background-color: #238636; }
     </style>
 </head>
 <body>
     <h1>🎵 Shazam Killer</h1>
+    <p>Нажми, чтобы записать 5 секунд музыки</p>
+    
     <button class="search-btn" id="searchBtn">🎙 Искать музыку</button>
-    <div id="status">Нажми, чтобы записать 5 секунд</div>
+    <div id="status">Готов к записи...</div>
 
-    <!-- Скрытый контейнер для ссылки на файл -->
-    <div id="share-container">
-        <a id="downloadLink" style="color: #2481cc; text-decoration: underline;" download="audio.webm">Скачать запись</a>
+    <!-- Контейнер для кнопки скачивания (появится после записи) -->
+    <div id="download-container">
+        <a id="downloadLink" class="download-btn" download="audio.webm">📥 Скачать аудио</a>
     </div>
 
     <script>
@@ -35,18 +89,21 @@
 
         const btn = document.getElementById('searchBtn');
         const status = document.getElementById('status');
-        const shareContainer = document.getElementById('share-container');
+        const downloadContainer = document.getElementById('download-container');
         const downloadLink = document.getElementById('downloadLink');
 
         btn.addEventListener('click', async () => {
             if (isRecording) return;
 
             try {
+                // Запрашиваем доступ к микрофону
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 
                 mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
                 };
 
                 mediaRecorder.onstop = () => {
@@ -58,29 +115,34 @@
                     status.innerText = 'Запись сделана!';
                     isRecording = false;
 
-                    // Создаем ссылку на скачивание файла
+                    // Создаем ссылку на файл
                     const url = URL.createObjectURL(audioBlob);
+                    
+                    // Настраиваем кнопку скачивания
                     downloadLink.href = url;
-                    shareContainer.style.display = 'block';
+                    downloadContainer.style.display = 'block';
 
-                    // Пытаемся использовать Web Share API (если поддерживается)
-                    if (navigator.share) {
-                        navigator.share({
-                            title: 'Аудио для распознавания',
-                            text: 'Отправь это голосовое боту!',
-                            files: [new File([audioBlob], 'music.webm', { type: 'audio/webm' })]
-                        }).catch(console.error);
+                    // Пытаемся использовать встроенный метод Telegram (если есть)
+                    if (tg.downloadFile) {
+                        try {
+                            tg.downloadFile({ url: url, file_name: 'music.webm' });
+                            tg.showAlert("Файл скачивается через Telegram!");
+                        } catch (e) {
+                            console.error("Ошибка downloadFile:", e);
+                        }
                     } else {
-                        tg.showAlert("Файл готов. Нажми 'Скачать запись', а затем отправь его боту.");
+                        tg.showAlert("Нажми на кнопку 'Скачать аудио' ниже. Если не работает — открой ссылку в браузере.");
                     }
                 };
 
+                // Начинаем запись
                 mediaRecorder.start();
                 isRecording = true;
                 btn.classList.add('recording');
                 btn.innerHTML = '🔴 Идет запись (5 сек)...';
                 status.innerText = 'Слушаю музыку...';
 
+                // Останавливаем через 5 секунд
                 setTimeout(() => {
                     if (mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
@@ -89,7 +151,7 @@
                 }, 5000);
 
             } catch (err) {
-                tg.showAlert("Ошибка доступа к микрофону: " + err.message);
+                tg.showAlert("Ошибка микрофона: " + err.message);
             }
         });
     </script>
