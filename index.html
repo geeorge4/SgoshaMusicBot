@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shazam Killer - Выбор языка</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* Стили для темной темы (как в Telegram) */
+        body {
+            background-color: #1e1e2e; /* Темный фон */
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Сетка для кнопок (2 колонки) */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2 колонки */
+            gap: 10px; /* Расстояние между кнопками */
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Стиль кнопки */
+        .lang-btn {
+            background-color: rgba(255, 255, 255, 0.1); /* Полупрозрачный фон */
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .lang-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Флаг и текст внутри кнопки */
+        .flag {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Шапка (эмодзи) -->
+    <div class="header">
+        🌍🌍🌍🌍🌍🌍
+        <br>
+        Выбери язык
+    </div>
+
+    <!-- Сетка кнопок -->
+    <div class="grid-container">
+        <button class="lang-btn" onclick="setLang('en')">
+            <span class="flag">🇬🇧</span> English
+        </button>
+        <button class="lang-btn" onclick="setLang('ru')">
+            <span class="flag">🇷🇺</span> Русский
+        </button>
+        <button class="lang-btn" onclick="setLang('es')">
+            <span class="flag">🇪🇸</span> Español
+        </button>
+        <button class="lang-btn" onclick="setLang('ar')">
+            <span class="flag">🇸🇦</span> العربية
+        </button>
+        <button class="lang-btn" onclick="setLang('tr')">
+            <span class="flag">🇹🇷</span> Türkçe
+        </button>
+        <button class="lang-btn" onclick="setLang('hi')">
+            <span class="flag">🇮🇳</span> हिंदी
+        </button>
+        <button class="lang-btn" onclick="setLang('vi')">
+            <span class="flag">🇻🇳</span> Tiếng Việt
+        </button>
+        <button class="lang-btn" onclick="setLang('uk')">
+            <span class="flag">🇺🇦</span> Українська
+        </button>
+        <button class="lang-btn" onclick="setLang('id')">
+            <span class="flag">🇮🇩</span> Bahasa Indonesia
+        </button>
+        <button class="lang-btn" onclick="setLang('ms')">
+            <span class="flag">🇲🇾</span> Melayu
+        </button>
+        <button class="lang-btn" onclick="setLang('ko')">
+            <span class="flag">🇰🇷</span> 한국인
+        </button>
+        <button class="lang-btn" onclick="setLang('pt')">
+            <span class="flag">🇧🇷</span> Português
+        </button>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
+
+        // Функция, которая вызывается при нажатии на кнопку
+        function setLang(langCode) {
+            // Вибрация (для тактильного отклика)
+            tg.HapticFeedback.impactOccurred('light');
+            
+            // Показываем всплывающее сообщение
+            tg.showAlert(`Выбран язык: ${langCode.toUpperCase()}`);
+            
+            // Тут можно отправить данные боту
+            // tg.sendData(JSON.stringify({ action: 'set_lang', lang: langCode }));
+        }
+    </script>
+
+</body>
+</html>
