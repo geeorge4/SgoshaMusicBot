@@ -40,9 +40,5 @@ The project is built with HTML, CSS, and JavaScript using the Telegram Web App A
 - [ ] Multi-language support. / Поддержка нескольких языков.
 - [ ] Search history. / История поиска.
 
-## 👨‍💻 Author / Автор
-**George (Георгий)** — young developer (10 y.o.), leader of the RG clan. / Юный разработчик (10 лет), лидер клана RG.
-- GitHub: [@твой_ник](https://github.com/твой_ник)
-
 ## 📄 License / Лицензия
 This project is licensed under the MIT License. / Этот проект распространяется под лицензией MIT.
