@@ -3,67 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shazam Killer</title>
+    <title>SgsohaMusicBot</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            background-color: #1e1e2e; 
-            color: white; 
-            font-family: 'Segoe UI', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            margin: 0; 
-            padding: 20px;
-            text-align: center;
-        }
-        .search-btn { 
-            background: linear-gradient(135deg, #2481cc, #1b65a1); 
-            color: white; 
-            border: none; 
-            padding: 20px 40px; 
-            font-size: 20px; 
-            font-weight: bold; 
-            border-radius: 50px; 
-            cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); 
-            transition: 0.2s; 
-            margin-top: 20px;
-        }
+        body { background-color: #1e1e2e; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
+        .search-btn { background: linear-gradient(135deg, #2481cc, #1b65a1); color: white; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(36, 129, 204, 0.4); transition: 0.2s; margin-top: 20px; }
         .search-btn:active { transform: scale(0.95); }
-        .search-btn.recording { 
-            background: linear-gradient(135deg, #cc2424, #a11b1b); 
-            animation: pulse 1s infinite; 
-        }
-        @keyframes pulse { 
-            0% { transform: scale(1); } 
-            50% { transform: scale(1.05); } 
-            100% { transform: scale(1); } 
-        }
-        #status { 
-            margin-top: 20px; 
-            color: #a0a0a0; 
-            font-size: 14px; 
-        }
-        #download-container {
-            display: none;
-            margin-top: 20px;
-            width: 100%;
-            max-width: 300px;
-        }
-        .download-btn {
-            display: block;
-            background-color: #2ea043;
-            color: white;
-            padding: 15px;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 10px;
-        }
+        .search-btn.recording { background: linear-gradient(135deg, #cc2424, #a11b1b); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #status { margin-top: 20px; color: #a0a0a0; font-size: 14px; }
+        
+        /* Стили для кнопки скачивания */
+        #download-container { display: none; margin-top: 20px; width: 100%; max-width: 300px; }
+        .download-btn { display: block; background-color: #2ea043; color: white; padding: 15px; text-decoration: none; border-radius: 10px; font-weight: bold; text-align: center; margin-bottom: 10px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
         .download-btn:active { background-color: #238636; }
     </style>
 </head>
@@ -76,7 +28,7 @@
 
     <!-- Контейнер для кнопки скачивания (появится после записи) -->
     <div id="download-container">
-        <a id="downloadLink" class="download-btn" download="audio.webm">📥 Скачать аудио</a>
+        <button id="downloadBtn" class="download-btn">📥 Скачать аудио</button>
     </div>
 
     <script>
@@ -86,17 +38,17 @@
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
+        let currentAudioUrl = null; // Здесь будем хранить ссылку на Blob
 
         const btn = document.getElementById('searchBtn');
         const status = document.getElementById('status');
         const downloadContainer = document.getElementById('download-container');
-        const downloadLink = document.getElementById('downloadLink');
+        const downloadBtn = document.getElementById('downloadBtn');
 
         btn.addEventListener('click', async () => {
             if (isRecording) return;
 
             try {
-                // Запрашиваем доступ к микрофону
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 
@@ -107,6 +59,7 @@
                 };
 
                 mediaRecorder.onstop = () => {
+                    // Создаем Blob (файл в памяти)
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     audioChunks = [];
                     
@@ -115,17 +68,19 @@
                     status.innerText = 'Запись сделана!';
                     isRecording = false;
 
-                    // Создаем ссылку на файл
-                    const url = URL.createObjectURL(audioBlob);
+                    // ВОТ ТУТ МЫ СОЗДАЕМ ССЫЛКУ НА BLOB
+                    if (currentAudioUrl) {
+                        URL.revokeObjectURL(currentAudioUrl); // Удаляем старую ссылку
+                    }
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
                     
-                    // Настраиваем кнопку скачивания
-                    downloadLink.href = url;
+                    // Показываем кнопку скачивания
                     downloadContainer.style.display = 'block';
-
-                    // Пытаемся использовать встроенный метод Telegram (если есть)
+                    
+                    // Пытаемся использовать нативный метод Telegram (если есть)
                     if (tg.downloadFile) {
                         try {
-                            tg.downloadFile({ url: url, file_name: 'music.webm' });
+                            tg.downloadFile({ url: currentAudioUrl, file_name: 'music.webm' });
                             tg.showAlert("Файл скачивается через Telegram!");
                         } catch (e) {
                             console.error("Ошибка downloadFile:", e);
@@ -135,14 +90,12 @@
                     }
                 };
 
-                // Начинаем запись
                 mediaRecorder.start();
                 isRecording = true;
                 btn.classList.add('recording');
                 btn.innerHTML = '🔴 Идет запись (5 сек)...';
                 status.innerText = 'Слушаю музыку...';
 
-                // Останавливаем через 5 секунд
                 setTimeout(() => {
                     if (mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
@@ -153,6 +106,28 @@
             } catch (err) {
                 tg.showAlert("Ошибка микрофона: " + err.message);
             }
+        });
+
+        // Обработчик кнопки "Скачать аудио"
+        downloadBtn.addEventListener('click', () => {
+            if (!currentAudioUrl) return;
+
+            // Создаем временную ссылку <a> и кликаем по ней
+            const a = document.createElement('a');
+            a.href = currentAudioUrl;
+            a.download = 'music.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Если браузер не поддерживает, пробуем открыть в новой вкладке
+            setTimeout(() => {
+                if (tg.downloadFile) {
+                     // уже попытались
+                } else {
+                     window.open(currentAudioUrl, '_blank');
+                }
+            }, 500);
         });
     </script>
 </body>
